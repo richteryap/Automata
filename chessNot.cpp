@@ -739,6 +739,9 @@ private:
 
 public:
     void processInput(const string& input) {
+        cout << "\nPROCESSING: \n\"" << input << "\"\n";
+        cout << "\n";
+
         auto [tokens, hadLexicalError] = lexer.tokenize(input);
         lexer.displayTokens(tokens);
         bool syntaxValid = syntaxValidator.validateMoveSyntax(tokens);
