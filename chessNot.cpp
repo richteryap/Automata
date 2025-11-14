@@ -572,60 +572,14 @@ public:
     }
 };
 
-// ========== CHESS SYNTAX VALIDATOR ==========
-class ChessSyntaxValidator {
-public:
-    bool validateMoveSyntax(const vector<ChessToken>& tokens) {
-        cout << "\n=== SYNTAX VALIDATION ===\n";
-        bool hasErrors = false;
-        
-        for (size_t i = 0; i < tokens.size() - 1; ++i) {
-            const auto& current = tokens[i];
-            const auto& next = tokens[i+1];
-            
-            if (isPrimaryMove(current) && isPrimaryMove(next)) {
-                if (current.position + current.value.length() == next.position) {
-                    cout << "SYNTAX ERROR: Primary move tokens found **physically touching** in input: '" 
-                         << current.value << "' at pos " << current.position << " followed by '" 
-                         << next.value << "' at pos " << next.position << ". Tokens must be separated by space/number.\n";
-                    hasErrors = true;
-                    break;
-                }
-            }
-        }
-        
-        if (!hasErrors) {
-            cout << "Token stream structure appears lexically valid.\n";
-        }
-        return !hasErrors;
-    }
-
-private:
-    bool isPrimaryMove(const ChessToken& token) {
-        return token.type == ChessTokenType::MOVE_NUMBER ||
-               token.type == ChessTokenType::PAWN_MOVE ||
-               token.type == ChessTokenType::PIECE_MOVE ||
-               token.type == ChessTokenType::TWIN_PIECE_MOVE ||
-               token.type == ChessTokenType::PAWN_CAPTURE || 
-               token.type == ChessTokenType::PIECE_CAPTURE ||
-               token.type == ChessTokenType::TWIN_PIECE_CAPTURE || 
-               token.type == ChessTokenType::CASTLING || 
-               token.type == ChessTokenType::PROMOTION ||
-               token.type == ChessTokenType::PROMOTION_VIA_CAPTURE || 
-               token.type == ChessTokenType::CHECK ||
-               token.type == ChessTokenType::CHECKMATE ||
-               token.type == ChessTokenType::RESULT;
-    }
-};
-
-// ========== CHESS PUSHDOWN AUTOMATA ==========
-class ChessPDA {
+// ========== CHESS SYNTACTIC VALIDATOR ==========
+class ChessSyntacticValidator {
 private:
     int expectedMoveNumber;
     enum class MoveState { EXPECT_NUMBER, EXPECT_WHITE_MOVE, EXPECT_BLACK_MOVE, GAME_OVER };
     MoveState currentState;
 
-    bool isMoveToken(ChessTokenType type) const {
+    bool isLegalMoveSymbol(ChessTokenType type) const {
         return type == ChessTokenType::PAWN_MOVE ||
                type == ChessTokenType::PIECE_MOVE ||
                type == ChessTokenType::TWIN_PIECE_MOVE ||
@@ -640,14 +594,30 @@ private:
     }
 
 public:
-    ChessPDA() {
+    ChessSyntacticValidator() {
         resetPDA();
     }
-    
-    bool validateMoveSequence(const vector<ChessToken>& tokens) {
-        cout << "\n=== PDA VALIDATION ===\n";
+
+    bool validateSyntax(const vector<ChessToken>& tokens) {
+        cout << "\n=== SYNTACTIC VALIDATION ===\n";
+
+        bool hasErrors = false;
+        for (size_t i = 0; i < tokens.size() - 1; ++i) {
+            const auto& current = tokens[i];
+            const auto& next = tokens[i+1];
+            
+            if (isPrimaryMove(current) && isPrimaryMove(next)) {
+                if (current.position + current.value.length() == next.position) {
+                    cout << "SYNTAX ERROR: Primary move tokens found **physically touching** in input: '" 
+                         << current.value << "' at pos " << current.position << " followed by '" 
+                         << next.value << "' at pos " << next.position << ". Tokens must be separated by space/number.\n";
+                    hasErrors = true;
+                    break;
+                }
+            }
+        }
+
         resetPDA();
-        
         for (size_t i = 0; i + 1 < tokens.size(); ++i) {
             const auto& token = tokens[i];
             
@@ -697,7 +667,7 @@ public:
                 continue; 
             }
             
-            if (isMoveToken(token.type)) {
+            if (isLegalMoveSymbol(token.type)) {
                 if (token.type == ChessTokenType::CHECKMATE) {
                     if (i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::RESULT) {
                     } else {
@@ -719,8 +689,28 @@ public:
                 continue;
             }
         }
-        cout << "PGN sequence successfully parsed.\n";
-        return true;
+        
+        if (!hasErrors) {
+            cout << "Syntactic Validation Passed: No syntax errors detected in token sequence.\n";
+        }
+        return !hasErrors;
+    }
+
+private:
+    bool isPrimaryMove(const ChessToken& token) {
+        return token.type == ChessTokenType::MOVE_NUMBER ||
+               token.type == ChessTokenType::PAWN_MOVE ||
+               token.type == ChessTokenType::PIECE_MOVE ||
+               token.type == ChessTokenType::TWIN_PIECE_MOVE ||
+               token.type == ChessTokenType::PAWN_CAPTURE || 
+               token.type == ChessTokenType::PIECE_CAPTURE ||
+               token.type == ChessTokenType::TWIN_PIECE_CAPTURE || 
+               token.type == ChessTokenType::CASTLING || 
+               token.type == ChessTokenType::PROMOTION ||
+               token.type == ChessTokenType::PROMOTION_VIA_CAPTURE || 
+               token.type == ChessTokenType::CHECK ||
+               token.type == ChessTokenType::CHECKMATE ||
+               token.type == ChessTokenType::RESULT;
     }
 
 private:
@@ -734,8 +724,7 @@ private:
 class ChessParserSimulator {
 private:
     ChessLexer lexer;
-    ChessSyntaxValidator  syntaxValidator;
-    ChessPDA  pda;
+    ChessSyntacticValidator  syntaxValidator;
 
 public:
     void processInput(const string& input) {
@@ -744,21 +733,17 @@ public:
 
         auto [tokens, hadLexicalError] = lexer.tokenize(input);
         lexer.displayTokens(tokens);
-        bool syntaxValid = syntaxValidator.validateMoveSyntax(tokens);
-        bool pdaValid = pda.validateMoveSequence(tokens);
+        bool syntaxValid = syntaxValidator.validateSyntax(tokens);
         
-        cout << "\n--- DIAGNOSTIC CHECK ---\n";
+        cout << "\n=== DIAGNOSTIC CHECK ===\n";
         cout << "Lexical Errors Found: " << (hadLexicalError ? "TRUE" : "FALSE") << "\n";
-        cout << "Syntax Valid: " << (syntaxValid ? "TRUE" : "FALSE") << "\n";
-        cout << "PDA Valid: " << (pdaValid ? "TRUE" : "FALSE") << "\n";
+        cout << "Syntactic Validity: " << (syntaxValid ? "TRUE" : "FALSE") << "\n";
         
-        bool overallValid = syntaxValid && pdaValid && !hadLexicalError;
+        bool overallValid = syntaxValid && !hadLexicalError;
         
         cout << "\nRESULT: " << (overallValid ? "VALID (Lexical/Syntax/Sequence)" : "INVALID (Lexical/Syntax/Sequence)") << "\n";
         if (hadLexicalError) cout << "   - Lexical errors (unrecognized characters) found.\n";
-        if (!syntaxValid) cout << "   - Syntax (token structure) errors found.\n";
-        if (!pdaValid) cout << "   - PDA (sequence/turn order) errors found.\n";
-        cout << string(50, '=') << "\n";
+        if (!syntaxValid) cout << "   - Syntactic errors (token structure and sequence) found.\n";
     }
 };
 
