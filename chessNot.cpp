@@ -25,6 +25,8 @@ enum class ChessTokenType {
     CHECK,
     CHECKMATE,
     RESULT,
+    VAR_BEGIN,
+    VAR_END,
     END_OF_INPUT,
     INVALID
 };
@@ -121,10 +123,21 @@ public:
     }
 
     NFAPtr createMoveNumberNFA() {
-        NFAPtr digit = createCharClassNFA("[0-9]");
-        NFAPtr oneOrMoreDigits = oneOrMore(digit);
-        NFAPtr dot = createCharNFA('.');
-        return concatenate(oneOrMoreDigits, dot); // 1., 23.
+        NFAPtr digit1 = createCharClassNFA("[0-9]");
+        NFAPtr oneOrMoreDigits1 = oneOrMore(digit1);
+        NFAPtr dot1 = createCharNFA('.');
+
+        NFAPtr digit2 = createCharClassNFA("[0-9]");
+        NFAPtr oneOrMoreDigits2 = oneOrMore(digit2);
+        NFAPtr dot2 = createCharNFA('.');
+        NFAPtr dot3 = createCharNFA('.');
+        NFAPtr dot4 = createCharNFA('.');
+        NFAPtr dots = concatenate(dot2, concatenate(dot3, dot4));
+
+        NFAPtr moveNumber1 = concatenate(oneOrMoreDigits1, dot1); // 1., 23.
+        NFAPtr moveNumber2 = concatenate(oneOrMoreDigits2, dots);
+
+        return unionNFA(moveNumber1, moveNumber2);
     }
 
     NFAPtr createPawnMoveNFA() {
@@ -278,6 +291,14 @@ public:
         return unionNFA(simpleResults, draw);
     }
 
+    NFAPtr createVarBeginNFA() {
+        return createCharNFA('(');
+    }
+
+    NFAPtr createVarEndNFA() {
+        return createCharNFA(')');
+    }
+
     void epsilonClosure(const set<shared_ptr<State>>& states, set<shared_ptr<State>>& closure) {
         stack<shared_ptr<State>> stack;
         for (auto state : states) { stack.push(state); closure.insert(state); }
@@ -416,6 +437,8 @@ private:
     shared_ptr<DFAState> checkDFA;
     shared_ptr<DFAState> checkmateDFA;
     shared_ptr<DFAState> resultDFA;
+    shared_ptr<DFAState> VarBeginDFA;
+    shared_ptr<DFAState> VarEndDFA;
 
 public:
     ChessLexer() {
@@ -437,6 +460,8 @@ public:
         checkDFA = nfaBuilder.convertToDFA(nfaBuilder.createCheckNFA());
         checkmateDFA = nfaBuilder.convertToDFA(nfaBuilder.createCheckmateNFA());
         resultDFA = nfaBuilder.convertToDFA(nfaBuilder.createResultNFA());
+        VarBeginDFA = nfaBuilder.convertToDFA(nfaBuilder.createVarBeginNFA());
+        VarEndDFA = nfaBuilder.convertToDFA(nfaBuilder.createVarEndNFA());
     }
 
     pair<vector<ChessToken>, bool> tokenize(const string& input) {
@@ -478,8 +503,16 @@ public:
     }
 
     ChessToken tryMatchLongest(const string& input, int startPos) {
-        vector<pair<ChessTokenType, string>> candidates;
+        if (startPos < (int)input.length()) {
+            char ch = input[startPos];
+            if (ch == '(') {
+                return ChessToken(ChessTokenType::VAR_BEGIN, string(1, '('), startPos);
+            } else if (ch == ')') {
+                return ChessToken(ChessTokenType::VAR_END, string(1, ')'), startPos);
+            }
+        }
 
+        vector<pair<ChessTokenType, string>> candidates;
         testDFAPattern(moveNumberDFA, input, startPos, ChessTokenType::MOVE_NUMBER, candidates);
         testDFAPattern(resultDFA, input, startPos, ChessTokenType::RESULT, candidates);
         testDFAPattern(castlingDFA, input, startPos, ChessTokenType::CASTLING, candidates);
@@ -493,6 +526,8 @@ public:
         testDFAPattern(promotionViaCaptureDFA, input, startPos, ChessTokenType::PROMOTION_VIA_CAPTURE, candidates);
         testDFAPattern(checkmateDFA, input, startPos, ChessTokenType::CHECKMATE, candidates);
         testDFAPattern(checkDFA, input, startPos, ChessTokenType::CHECK, candidates);
+        testDFAPattern(VarBeginDFA, input, startPos, ChessTokenType::VAR_BEGIN, candidates);
+        testDFAPattern(VarEndDFA, input, startPos, ChessTokenType::VAR_END, candidates);
 
         if (!candidates.empty()) {
             auto longest = candidates[0];
@@ -564,6 +599,8 @@ public:
                 case ChessTokenType::CHECK:       typeStr = "CHECK      "; break;
                 case ChessTokenType::CHECKMATE:   typeStr = "CHECKMATE  "; break;
                 case ChessTokenType::RESULT:      typeStr = "RESULT     "; break;
+                case ChessTokenType::VAR_BEGIN: typeStr = "VAR_BEGIN  "; break;
+                case ChessTokenType::VAR_END:   typeStr = "VAR_END    "; break;
                 case ChessTokenType::END_OF_INPUT:typeStr = "END_OF_INPUT"; break;
                 case ChessTokenType::INVALID:     typeStr = "INVALID    "; break;
             }
@@ -575,9 +612,14 @@ public:
 // ========== CHESS SYNTACTIC VALIDATOR ==========
 class ChessSyntacticValidator {
 private:
-    int expectedMoveNumber;
     enum class MoveState { EXPECT_NUMBER, EXPECT_WHITE_MOVE, EXPECT_BLACK_MOVE, GAME_OVER };
-    MoveState currentState;
+
+    struct PDAContext {
+        int expectedMoveNumber;
+        MoveState currentState;
+    };
+
+    vector<PDAContext> contextStack;
 
     bool isLegalMoveSymbol(ChessTokenType type) const {
         return type == ChessTokenType::PAWN_MOVE ||
@@ -590,7 +632,9 @@ private:
                type == ChessTokenType::PROMOTION ||
                type == ChessTokenType::PROMOTION_VIA_CAPTURE ||
                type == ChessTokenType::CHECK ||
-               type == ChessTokenType::CHECKMATE;
+               type == ChessTokenType::CHECKMATE ||
+               type == ChessTokenType::VAR_BEGIN ||
+               type == ChessTokenType::VAR_END;
     }
 
 public:
@@ -605,7 +649,6 @@ public:
         for (size_t i = 0; i < tokens.size() - 1; ++i) {
             const auto& current = tokens[i];
             const auto& next = tokens[i+1];
-            
             if (isPrimaryMove(current) && isPrimaryMove(next)) {
                 if (current.position + current.value.length() == next.position) {
                     cout << "SYNTAX ERROR: Primary move tokens found **physically touching** in input: '" 
@@ -618,58 +661,98 @@ public:
         }
 
         resetPDA();
-        for (size_t i = 0; i + 1 < tokens.size(); ++i) {
+        for (size_t i = 0; i < tokens.size(); ++i) {
             const auto& token = tokens[i];
+
+            if (token.type == ChessTokenType::VAR_BEGIN) {
+                if (contextStack.empty()) {
+                    contextStack.push_back({1, MoveState::EXPECT_NUMBER});
+                }
+                PDAContext newCtx = contextStack.back();
+                contextStack.push_back(newCtx);
+                if (i > 1 && tokens[i-2].type == ChessTokenType::MOVE_NUMBER) {
+                    contextStack.back().expectedMoveNumber--;
+                }
+                contextStack.back().currentState = MoveState::EXPECT_NUMBER;
+                continue;
+            }
+
             
-            if (currentState == MoveState::GAME_OVER) {
+
+            if (token.type == ChessTokenType::VAR_END) {
+                if (contextStack.size() <= 1) {
+                    cout << "SEQUENCE ERROR: Unmatched ')' variation end at pos " << token.position << ".\n";
+                    return false;
+                }
+                contextStack.pop_back();
+                contextStack.back().currentState = MoveState::EXPECT_NUMBER;
+                continue;
+            }
+
+            
+
+            if (token.type == ChessTokenType::END_OF_INPUT) { 
+                if (contextStack.size() > 1) {
+                    cout << "SEQUENCE ERROR: Unclosed variation(s) — missing ')'.\n";
+                    return false;
+                }
+                if (contextStack.back().currentState == MoveState::EXPECT_WHITE_MOVE) {
+                    cout << "SEQUENCE ERROR: Game ended abruptly. Expected White's move for turn " << contextStack.back().expectedMoveNumber << ".\n";
+                    return false;
+                }
+                if (contextStack.back().currentState == MoveState::EXPECT_BLACK_MOVE) {
+                    cout << "SEQUENCE WARNING: Game ended after White's move in turn " << contextStack.back().expectedMoveNumber 
+                         << ". Black's move is missing (Half-move).\n";
+                }
+                break; 
+            }
+
+            if (contextStack.back().currentState == MoveState::GAME_OVER) {
                 if (token.type == ChessTokenType::END_OF_INPUT) {
                     break; 
                 }
                 cout << "SEQUENCE ERROR: Tokens found after game termination (" << token.value << ").\n";
                 return false;
             }
-
-            if (token.type == ChessTokenType::END_OF_INPUT) { 
-                if (currentState == MoveState::EXPECT_WHITE_MOVE) {
-                    cout << "SEQUENCE ERROR: Game ended abruptly. Expected White's move for turn " << expectedMoveNumber << ".\n";
-                    return false;
-                }
-                if (currentState == MoveState::EXPECT_BLACK_MOVE) {
-                    cout << "SEQUENCE WARNING: Game ended after White's move in turn " << expectedMoveNumber 
-                         << ". Black's move is missing (Half-move).\n";
-                }
-                break; 
-            }
             
             if (token.type == ChessTokenType::RESULT) {
-                currentState = MoveState::GAME_OVER; 
+                contextStack.back().currentState = MoveState::GAME_OVER; 
                 continue;
             }
             
             if (token.type == ChessTokenType::MOVE_NUMBER) {
-                if (currentState != MoveState::EXPECT_NUMBER) {
+                if (i > 0 && tokens[i-1].type == ChessTokenType::VAR_END) {
+                    contextStack.back().currentState = MoveState::EXPECT_BLACK_MOVE;
+                    continue;
+                } else if (i > 0 && tokens[i-1].type == ChessTokenType::VAR_BEGIN && i + 1 < tokens.size() && tokens[i+2].type == ChessTokenType::MOVE_NUMBER) {
+                    contextStack.back().currentState = MoveState::EXPECT_BLACK_MOVE;
+                    continue;
+                }
+                if (contextStack.back().currentState != MoveState::EXPECT_NUMBER) {
                     cout << "SEQUENCE ERROR: Found MOVE_NUMBER (" << token.value << ") but expected a move or result.\n";
                     return false;
                 }
-                
+
                 string numberStr = token.value.substr(0, token.value.length() - 1);
                 int moveNumber = 0;
                 try { moveNumber = stoi(numberStr); } catch (...) { return false; } 
 
-                if (moveNumber != expectedMoveNumber) {
-                    cout << "SEQUENCE ERROR: Expected move number " << expectedMoveNumber 
+                if (moveNumber != contextStack.back().expectedMoveNumber) {
+                    cout << "SEQUENCE ERROR: Expected move number " << contextStack.back().expectedMoveNumber 
                          << " but found " << moveNumber << ".\n";
                     return false;
                 }
-                
-                expectedMoveNumber++;
-                currentState = MoveState::EXPECT_WHITE_MOVE;
+
+                contextStack.back().expectedMoveNumber++;
+                contextStack.back().currentState = MoveState::EXPECT_WHITE_MOVE;
                 continue; 
             }
             
             if (isLegalMoveSymbol(token.type)) {
                 if (token.type == ChessTokenType::CHECKMATE) {
-                    if (i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::RESULT) {
+                    if (contextStack.size() > 1) {
+                        continue;
+                    } else if (i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::RESULT) {
                     } else {
                         cout << "SEQUENCE ERROR: Checkmate (" << token.value 
                              << ") must be followed immediately by a game RESULT (e.g., 1-0 or 0-1).\n";
@@ -677,10 +760,10 @@ public:
                     }
                 }
                 
-                if (currentState == MoveState::EXPECT_WHITE_MOVE) {
-                    currentState = MoveState::EXPECT_BLACK_MOVE;
-                } else if (currentState == MoveState::EXPECT_BLACK_MOVE) {
-                    currentState = MoveState::EXPECT_NUMBER;
+                if (contextStack.back().currentState == MoveState::EXPECT_WHITE_MOVE) {
+                    contextStack.back().currentState = MoveState::EXPECT_BLACK_MOVE;
+                } else if (contextStack.back().currentState == MoveState::EXPECT_BLACK_MOVE) {
+                    contextStack.back().currentState = MoveState::EXPECT_NUMBER;
                 } else {
                     cout << "SEQUENCE ERROR: Found an unexpected move (" << token.value 
                          << ") when expecting move number or result.\n";
@@ -688,6 +771,11 @@ public:
                 }
                 continue;
             }
+        }
+
+        if (contextStack.size() > 1) {
+            cout << "SEQUENCE ERROR: Unclosed variation(s) — missing ')'.\n";
+            return false;
         }
         
         if (!hasErrors) {
@@ -715,8 +803,8 @@ private:
 
 private:
     void resetPDA() {
-        expectedMoveNumber = 1;
-        currentState = MoveState::EXPECT_NUMBER;
+        contextStack.clear();
+        contextStack.push_back({ 1, MoveState::EXPECT_NUMBER });
     }
 };
 
