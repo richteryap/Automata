@@ -617,6 +617,7 @@ private:
     struct PDAContext {
         int expectedMoveNumber;
         MoveState currentState;
+        MoveState lastKnownState;
     };
 
     vector<PDAContext> contextStack;
@@ -632,9 +633,18 @@ private:
                type == ChessTokenType::PROMOTION ||
                type == ChessTokenType::PROMOTION_VIA_CAPTURE ||
                type == ChessTokenType::CHECK ||
-               type == ChessTokenType::CHECKMATE ||
-               type == ChessTokenType::VAR_BEGIN ||
-               type == ChessTokenType::VAR_END;
+               type == ChessTokenType::CHECKMATE;
+    }
+
+private:
+    string stateToString(MoveState state) const {
+        switch (state) {
+            case MoveState::EXPECT_NUMBER:      return "EXPECT_NUMBER (0)";
+            case MoveState::EXPECT_WHITE_MOVE:  return "EXPECT_WHITE_MOVE (1)";
+            case MoveState::EXPECT_BLACK_MOVE:  return "EXPECT_BLACK_MOVE (2)";
+            case MoveState::GAME_OVER:          return "GAME_OVER (3)";
+            default:                            return "UNKNOWN_STATE";
+        }
     }
 
 public:
@@ -670,14 +680,17 @@ public:
                 }
                 PDAContext newCtx = contextStack.back();
                 contextStack.push_back(newCtx);
-                if (i > 1 && tokens[i-2].type == ChessTokenType::MOVE_NUMBER) {
-                    contextStack.back().expectedMoveNumber--;
+                if (contextStack.size() > 1) {
+                    MoveState parentLastKnownState = contextStack[contextStack.size() - 2].lastKnownState;
+                    if (parentLastKnownState == MoveState::EXPECT_BLACK_MOVE) {
+                        contextStack.back().currentState = MoveState::EXPECT_BLACK_MOVE;
+                    }
+                    if (parentLastKnownState == MoveState::EXPECT_WHITE_MOVE) {
+                        contextStack.back().currentState = MoveState::EXPECT_WHITE_MOVE;
+                    }
                 }
-                contextStack.back().currentState = MoveState::EXPECT_NUMBER;
                 continue;
             }
-
-            
 
             if (token.type == ChessTokenType::VAR_END) {
                 if (contextStack.size() <= 1) {
@@ -685,11 +698,10 @@ public:
                     return false;
                 }
                 contextStack.pop_back();
-                contextStack.back().currentState = MoveState::EXPECT_NUMBER;
-                continue;
+                if (i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::VAR_END) {
+                    continue;
+                }
             }
-
-            
 
             if (token.type == ChessTokenType::END_OF_INPUT) { 
                 if (contextStack.size() > 1) {
@@ -722,10 +734,9 @@ public:
             
             if (token.type == ChessTokenType::MOVE_NUMBER) {
                 if (i > 0 && tokens[i-1].type == ChessTokenType::VAR_END) {
-                    contextStack.back().currentState = MoveState::EXPECT_BLACK_MOVE;
                     continue;
-                } else if (i > 0 && tokens[i-1].type == ChessTokenType::VAR_BEGIN && i + 1 < tokens.size() && tokens[i+2].type == ChessTokenType::MOVE_NUMBER) {
-                    contextStack.back().currentState = MoveState::EXPECT_BLACK_MOVE;
+                }
+                if (i > 0 && tokens[i-1].type == ChessTokenType::VAR_BEGIN) {
                     continue;
                 }
                 if (contextStack.back().currentState != MoveState::EXPECT_NUMBER) {
@@ -749,6 +760,10 @@ public:
             }
             
             if (isLegalMoveSymbol(token.type)) {
+                if (i > 1 && tokens[i-2].type == ChessTokenType::VAR_END && contextStack.back().currentState == MoveState::EXPECT_NUMBER) {
+                    contextStack.back().expectedMoveNumber++;
+                    contextStack.back().currentState = MoveState::EXPECT_WHITE_MOVE;
+                }
                 if (token.type == ChessTokenType::CHECKMATE) {
                     if (contextStack.size() > 1) {
                         continue;
@@ -759,6 +774,8 @@ public:
                         return false;
                     }
                 }
+
+                contextStack.back().lastKnownState = contextStack.back().currentState;
                 
                 if (contextStack.back().currentState == MoveState::EXPECT_WHITE_MOVE) {
                     contextStack.back().currentState = MoveState::EXPECT_BLACK_MOVE;
