@@ -767,7 +767,7 @@ public:
                 if (token.type == ChessTokenType::CHECKMATE) {
                     if (contextStack.size() > 1) {
                         continue;
-                    } else if (i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::RESULT) {
+                    } else if (i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::RESULT || i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::VAR_BEGIN) {
                     } else {
                         cout << "SEQUENCE ERROR: Checkmate (" << token.value 
                              << ") must be followed immediately by a game RESULT (e.g., 1-0 or 0-1).\n";
