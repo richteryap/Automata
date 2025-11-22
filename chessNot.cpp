@@ -7,6 +7,7 @@
 #include <sstream>
 #include <stdexcept> 
 #include <cctype>
+#include <algorithm>
 
 using namespace std;
 
@@ -479,8 +480,8 @@ public:
             ChessToken token = getNextToken(input, pos);
             if (token.type == ChessTokenType::INVALID) {
                 cout << "[LEXER ERROR] Invalid token at position " << pos 
-                    << ": '" << input.substr(pos, 1) << "' in context: '"
-                    << input.substr(max(0, pos-3), min(7, (int)input.length()-max(0,pos-3))) << "'" << endl;
+                     << ": '" << input.substr(pos, 1) << "' in context: '"
+                     << input.substr(max(0, pos-3), min(7, (int)input.length()-max(0,pos-3))) << "'" << endl;
                 
                 hadLexicalError = true;
                 pos++;
@@ -698,9 +699,7 @@ public:
                     return false;
                 }
                 contextStack.pop_back();
-                if (i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::VAR_END) {
-                    continue;
-                }
+                continue;
             }
 
             if (token.type == ChessTokenType::END_OF_INPUT) { 
