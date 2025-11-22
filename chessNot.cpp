@@ -621,7 +621,7 @@ private:
         MoveState lastKnownState;
     };
 
-    vector<PDAContext> contextStack;
+    vector<PDAContext> pdaStack;
 
     bool isLegalMoveSymbol(ChessTokenType type) const {
         return type == ChessTokenType::PAWN_MOVE ||
@@ -635,17 +635,6 @@ private:
                type == ChessTokenType::PROMOTION_VIA_CAPTURE ||
                type == ChessTokenType::CHECK ||
                type == ChessTokenType::CHECKMATE;
-    }
-
-private:
-    string stateToString(MoveState state) const {
-        switch (state) {
-            case MoveState::EXPECT_NUMBER:      return "EXPECT_NUMBER (0)";
-            case MoveState::EXPECT_WHITE_MOVE:  return "EXPECT_WHITE_MOVE (1)";
-            case MoveState::EXPECT_BLACK_MOVE:  return "EXPECT_BLACK_MOVE (2)";
-            case MoveState::GAME_OVER:          return "GAME_OVER (3)";
-            default:                            return "UNKNOWN_STATE";
-        }
     }
 
 public:
@@ -676,49 +665,48 @@ public:
             const auto& token = tokens[i];
 
             if (token.type == ChessTokenType::VAR_BEGIN) {
-                if (contextStack.empty()) {
-                    contextStack.push_back({1, MoveState::EXPECT_NUMBER});
+                if (pdaStack.empty()) {
+                    pdaStack.push_back({1, MoveState::EXPECT_NUMBER});
                 }
-                PDAContext newCtx = contextStack.back();
-                contextStack.push_back(newCtx);
-                if (contextStack.size() > 1) {
-                    MoveState parentLastKnownState = contextStack[contextStack.size() - 2].lastKnownState;
+                pdaStack.push_back(pdaStack.back());
+                if (pdaStack.size() > 1) {
+                    MoveState parentLastKnownState = pdaStack[pdaStack.size() - 2].lastKnownState;
                     if (parentLastKnownState == MoveState::EXPECT_BLACK_MOVE) {
-                        contextStack.back().currentState = MoveState::EXPECT_BLACK_MOVE;
+                        pdaStack.back().currentState = MoveState::EXPECT_BLACK_MOVE;
                     }
                     if (parentLastKnownState == MoveState::EXPECT_WHITE_MOVE) {
-                        contextStack.back().currentState = MoveState::EXPECT_WHITE_MOVE;
+                        pdaStack.back().currentState = MoveState::EXPECT_WHITE_MOVE;
                     }
                 }
                 continue;
             }
 
             if (token.type == ChessTokenType::VAR_END) {
-                if (contextStack.size() <= 1) {
+                if (pdaStack.size() <= 1) {
                     cout << "SEQUENCE ERROR: Unmatched ')' variation end at pos " << token.position << ".\n";
                     return false;
                 }
-                contextStack.pop_back();
+                pdaStack.pop_back();
                 continue;
             }
 
             if (token.type == ChessTokenType::END_OF_INPUT) { 
-                if (contextStack.size() > 1) {
+                if (pdaStack.size() > 1) {
                     cout << "SEQUENCE ERROR: Unclosed variation(s) — missing ')'.\n";
                     return false;
                 }
-                if (contextStack.back().currentState == MoveState::EXPECT_WHITE_MOVE) {
-                    cout << "SEQUENCE ERROR: Game ended abruptly. Expected White's move for turn " << contextStack.back().expectedMoveNumber << ".\n";
+                if (pdaStack.back().currentState == MoveState::EXPECT_WHITE_MOVE) {
+                    cout << "SEQUENCE ERROR: Game ended abruptly. Expected White's move for turn " << pdaStack.back().expectedMoveNumber << ".\n";
                     return false;
                 }
-                if (contextStack.back().currentState == MoveState::EXPECT_BLACK_MOVE) {
-                    cout << "SEQUENCE WARNING: Game ended after White's move in turn " << contextStack.back().expectedMoveNumber 
+                if (pdaStack.back().currentState == MoveState::EXPECT_BLACK_MOVE) {
+                    cout << "SEQUENCE WARNING: Game ended after White's move in turn " << pdaStack.back().expectedMoveNumber 
                          << ". Black's move is missing (Half-move).\n";
                 }
                 break; 
             }
 
-            if (contextStack.back().currentState == MoveState::GAME_OVER) {
+            if (pdaStack.back().currentState == MoveState::GAME_OVER) {
                 if (token.type == ChessTokenType::END_OF_INPUT) {
                     break; 
                 }
@@ -727,7 +715,7 @@ public:
             }
             
             if (token.type == ChessTokenType::RESULT) {
-                contextStack.back().currentState = MoveState::GAME_OVER; 
+                pdaStack.back().currentState = MoveState::GAME_OVER; 
                 continue;
             }
             
@@ -738,33 +726,37 @@ public:
                 if (i > 0 && tokens[i-1].type == ChessTokenType::VAR_BEGIN) {
                     continue;
                 }
-                if (contextStack.back().currentState != MoveState::EXPECT_NUMBER) {
+                if (pdaStack.back().currentState != MoveState::EXPECT_NUMBER) {
                     cout << "SEQUENCE ERROR: Found MOVE_NUMBER (" << token.value << ") but expected a move or result.\n";
                     return false;
                 }
 
                 string numberStr = token.value.substr(0, token.value.length() - 1);
                 int moveNumber = 0;
-                try { moveNumber = stoi(numberStr); } catch (...) { return false; } 
+                try {
+                    moveNumber = stoi(numberStr);
+                } catch (...) {
+                    return false;
+                } 
 
-                if (moveNumber != contextStack.back().expectedMoveNumber) {
-                    cout << "SEQUENCE ERROR: Expected move number " << contextStack.back().expectedMoveNumber 
+                if (moveNumber != pdaStack.back().expectedMoveNumber) {
+                    cout << "SEQUENCE ERROR: Expected move number " << pdaStack.back().expectedMoveNumber 
                          << " but found " << moveNumber << ".\n";
                     return false;
                 }
 
-                contextStack.back().expectedMoveNumber++;
-                contextStack.back().currentState = MoveState::EXPECT_WHITE_MOVE;
+                pdaStack.back().expectedMoveNumber++;
+                pdaStack.back().currentState = MoveState::EXPECT_WHITE_MOVE;
                 continue; 
             }
             
             if (isLegalMoveSymbol(token.type)) {
-                if (i > 1 && tokens[i-2].type == ChessTokenType::VAR_END && contextStack.back().currentState == MoveState::EXPECT_NUMBER) {
-                    contextStack.back().expectedMoveNumber++;
-                    contextStack.back().currentState = MoveState::EXPECT_WHITE_MOVE;
+                if (i > 1 && tokens[i-2].type == ChessTokenType::VAR_END && pdaStack.back().currentState == MoveState::EXPECT_NUMBER) {
+                    pdaStack.back().expectedMoveNumber++;
+                    pdaStack.back().currentState = MoveState::EXPECT_WHITE_MOVE;
                 }
                 if (token.type == ChessTokenType::CHECKMATE) {
-                    if (contextStack.size() > 1) {
+                    if (pdaStack.size() > 1) {
                         continue;
                     } else if (i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::RESULT || i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::VAR_BEGIN) {
                     } else {
@@ -774,12 +766,12 @@ public:
                     }
                 }
 
-                contextStack.back().lastKnownState = contextStack.back().currentState;
+                pdaStack.back().lastKnownState = pdaStack.back().currentState;
                 
-                if (contextStack.back().currentState == MoveState::EXPECT_WHITE_MOVE) {
-                    contextStack.back().currentState = MoveState::EXPECT_BLACK_MOVE;
-                } else if (contextStack.back().currentState == MoveState::EXPECT_BLACK_MOVE) {
-                    contextStack.back().currentState = MoveState::EXPECT_NUMBER;
+                if (pdaStack.back().currentState == MoveState::EXPECT_WHITE_MOVE) {
+                    pdaStack.back().currentState = MoveState::EXPECT_BLACK_MOVE;
+                } else if (pdaStack.back().currentState == MoveState::EXPECT_BLACK_MOVE) {
+                    pdaStack.back().currentState = MoveState::EXPECT_NUMBER;
                 } else {
                     cout << "SEQUENCE ERROR: Found an unexpected move (" << token.value 
                          << ") when expecting move number or result.\n";
@@ -787,11 +779,6 @@ public:
                 }
                 continue;
             }
-        }
-
-        if (contextStack.size() > 1) {
-            cout << "SEQUENCE ERROR: Unclosed variation(s) — missing ')'.\n";
-            return false;
         }
         
         if (!hasErrors) {
@@ -819,8 +806,8 @@ private:
 
 private:
     void resetPDA() {
-        contextStack.clear();
-        contextStack.push_back({ 1, MoveState::EXPECT_NUMBER });
+        pdaStack.clear();
+        pdaStack.push_back({ 1, MoveState::EXPECT_NUMBER });
     }
 };
 
@@ -848,22 +835,31 @@ public:
         cout << "\nRESULT: " << (overallValid ? "VALID (Lexical/Syntax/Sequence)" : "INVALID (Lexical/Syntax/Sequence)") << "\n";
         if (hadLexicalError) cout << "   - Lexical errors (unrecognized characters) found.\n";
         if (!syntaxValid) cout << "   - Syntactic errors (token structure and sequence) found.\n";
+        cout << "=======================================\n" << "\n";
     }
 };
 
 int main() {
     ChessParserSimulator simulator;
-    
     string input;
-    cout << "=== CHESS PGN ANALYZER SIMULATOR ===\n";
-    cout << "Enter chess notation (or 'quit' to exit):\n> ";
-    getline(cin, input);
 
-    if (input == "quit" || input == "exit" || input == "q") {
-        return 0;
-    }
+    do {
+        cout << "=== CHESS PGN ANALYZER SIMULATOR ===\n";
+        cout << "Enter chess notation (or 'quit' to exit):\n> ";
+        getline(cin, input);
 
-    simulator.processInput(input);
+        if (input == "quit" || input == "exit" || input == "q") {
+            return 0;
+        }
+
+        try {
+            simulator.processInput(input);
+        } catch (const exception& e) {
+            cerr << "\n[RUNTIME EXCEPTION] An unexpected error occurred: " << e.what() << endl;
+        } catch (...) {
+            cerr << "\n[RUNTIME EXCEPTION] An unknown error occurred during processing." << endl;
+        }
+    } while (true);
     
     return 0;
 }
