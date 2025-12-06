@@ -222,9 +222,9 @@ public:
 
     NFAPtr createPromotionNFA() {
         NFAPtr alphabet = createCharClassNFA("[a-h]");
-        NFAPtr number = createCharClassNFA("[1-8]");
+        NFAPtr flrank = createCharClassNFA("[18]");
 
-        NFAPtr pawn = concatenate(alphabet, number);
+        NFAPtr pawn = concatenate(alphabet, flrank);
         NFAPtr promote = createCharNFA('=');
         NFAPtr pieceToPromote = createCharClassNFA("[QRBN]");
         return concatenate(pawn, concatenate(promote, pieceToPromote)); // e8=Q, d1=N
@@ -232,8 +232,8 @@ public:
 
     NFAPtr createPromotionViaCaptureNFA() {
         NFAPtr alphabet = createCharClassNFA("[a-h]");
-        NFAPtr number = createCharClassNFA("[1-8]");
-        NFAPtr sqaure = concatenate(alphabet, number);
+        NFAPtr flrank = createCharClassNFA("[18]");
+        NFAPtr sqaure = concatenate(alphabet, flrank);
 
         NFAPtr pawn = createCharClassNFA("[a-h]");
         NFAPtr capture = createCharNFA('x');
