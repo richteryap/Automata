@@ -1,0 +1,30 @@
+graph TD
+    %% Nodes
+    Input[("Raw Input PGN String")]
+    Regex["Regular Expressions (Rules)"]
+    NFA["NFA Builder (Thompson's)"]
+    DFA["DFA Builder (Subset Const.)"]
+    Lexer["Lexer (Maximal Munch)"]
+    Tokens[("Token Stream")]
+    Parser["Syntactic Validator (PDA)"]
+    Output[("Valid / Invalid")]
+
+    %% Flow
+    Input --> Lexer
+    Regex --> NFA
+    NFA --> DFA
+    DFA --> Lexer
+    Lexer --> Tokens
+    Tokens --> Parser
+    Parser --> Output
+
+    %% Context Stack logic
+    subgraph PDA_Logic [PDA Logic]
+    Parser -- "Push Context" --> Stack[("Context Stack")]
+    Stack -- "Pop Context" --> Parser
+    end
+
+    %% Styling
+    style Input fill:#f9f,stroke:#333
+    style Output fill:#f9f,stroke:#333
+    style Tokens fill:#ff9,stroke:#333
