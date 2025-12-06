@@ -1,0 +1,240 @@
+graph LR
+    S((Start))
+
+
+    %% --- Pawn Move NFA ---
+    S -- ε --> q0_PM((PawnMoveStart))
+    q0_PM -- "ε" --> q1_PM((FileStart))
+    q1_PM -- "[a-h]" --> q2_PM((FileEnd))
+    q2_PM -- "ε" --> q3_PM((RankStart))
+    q3_PM -- "[1-8]" --> q4_PM((RankEnd))
+    q4_PM -- "ε" --> qF_PM(((PawnMoveAccept)))
+
+
+    %% --- Piece Move NFA ---
+    S -- ε --> q0_PCM((PieceMoveStart))
+    q0_PCM -- "ε" --> q1_PCM((PieceId))
+    q1_PCM -- "[KQBNR]" --> q2_PCM((PieceIdEnd))
+    q2_PCM -- "ε" --> q3_PCM((FileStart))
+    q3_PCM -- "[a-h]" --> q4_PCM((FileEnd))
+    q4_PCM -- "ε" --> q5_PCM((RankStart))
+    q5_PCM -- "[1-8]" --> q6_PCM((RankEnd))
+    q6_PCM -- "ε" --> qF_PCM(((PieceMoveAccept)))
+
+
+    %% --- Twin Piece Move NFA ---
+    S -- ε --> q0_TPM((TwinPieceMoveStart))
+    q0_TPM -- "ε" --> q1_TPM((PieceId))
+    q1_TPM -- "[KQBNR]" --> q2_TPM((PieceIdEnd))
+    q2_TPM -- "ε" --> q3_TPM((ambiguitystart))
+    q3_TPM -- "[a-h]" --> q4_TPM((alphabeticAmbiguity))
+    q3_TPM -- "[1-8]" --> q5_TPM((numericAmbiguity))
+    q4_TPM -- "ε" --> q6_TPM((ambiguityend))
+    q5_TPM -- "ε" --> q6_TPM((ambiguityend))
+    q6_TPM -- "ε" --> q7_TPM((FileStart))
+    q7_TPM -- "[a-h]" --> q8_TPM((FileEnd))
+    q8_TPM -- "ε" --> q9_TPM((RankStart))
+    q9_TPM -- "[1-8]" --> q10_TPM((RankEnd))
+    q10_TPM -- "ε" --> qF_TPM(((TwinPieceMoveAccept)))
+
+
+    %% --- Pawn Capture NFA ---
+    S -- ε --> q0_PC((PawnCaptureStart))
+    q0_PC -- "ε" --> q1_PC((PawnStart))
+    q1_PC -- "[a-h]" --> q2_PC((PawnEnd))
+    q2_PC -- "ε" --> q3_PC((CaptureSymbolStart))
+    q3_PC -- "x" --> q4_PC((CaptureSymbolEnd))
+    q4_PC -- "ε" --> q5_PC((FileStart))
+    q5_PC -- "[a-h]" --> q6_PC((FileEnd))
+    q6_PC -- "ε" --> q7_PC((RankStart))
+    q7_PC -- "[1-8]" --> q8_PC((RankEnd))
+    q8_PC -- "ε" --> qF_PC(((PawnCaptureAccept)))
+
+
+    %% --- Piece Capture NFA ---
+    S -- ε --> q0_PCC((PieceCaptureStart))
+    q0_PCC -- "ε" --> q1_PCC((PieceId))
+    q1_PCC -- "[KQBNR]" --> q2_PCC((PieceIdEnd))
+    q2_PCC -- "ε" --> q3_PCC((CaptureSymbolStart))
+    q3_PCC -- "x" --> q4_PCC((CaptureSymbolEnd))
+    q4_PCC -- "ε" --> q5_PCC((FileStart))
+    q5_PCC -- "[a-h]" --> q6_PCC((FileEnd))
+    q6_PCC -- "ε" --> q7_PCC((RankStart))
+    q7_PCC -- "[1-8]" --> q8_PCC((RankEnd))
+    q8_PCC -- "ε" --> qF_PCC(((PieceCaptureAccept)))
+
+
+    %% --- Twin Piece Capture NFA ---
+    S -- ε --> q0_TPC((TwinPieceCaptureStart))
+    q0_TPC -- "ε" --> q1_TPC((PieceId))
+    q1_TPC -- "[KQBNR]" --> q2_TPC((PieceIdEnd))
+    q2_TPC -- "ε" --> q3_TPC((ambiguitystart))
+    q3_TPC -- "[a-h]" --> q4_TPC((alphabeticAmbiguity))
+    q3_TPC -- "[1-8]" --> q5_TPC((numericAmbiguity))
+    q4_TPC -- "ε" --> q6_TPC((ambiguityend))
+    q5_TPC -- "ε" --> q6_TPC((ambiguityend))
+    q6_TPC -- "ε" --> q7_TPC((CaptureSymbolStart))
+    q7_TPC -- "x" --> q8_TPC((CaptureSymbolEnd))
+    q8_TPC -- "ε" --> q9_TPC((FileStart))
+    q9_TPC -- "[a-h]" --> q10_TPC((FileEnd))
+    q10_TPC -- "ε" --> q11_TPC((RankStart))
+    q11_TPC -- "[1-8]" --> q12_TPC((RankEnd))
+    q12_TPC -- "ε" --> qF_TPC(((TwinPieceCaptureAccept)))
+
+
+    %% --- Castling NFA ---
+    S -- ε --> q0_Cas((CastlingStart))
+    q0_Cas -- "ε" --> q1_KCas((FirstOStart))
+    q1_KCas -- "O" --> q2_KCas((FirstOEnd))
+    q2_KCas -- "ε" --> q3_KCas((DashStart))
+    q3_KCas -- "-" --> q4_KCas((DashEnd))
+    q4_KCas -- "ε" --> q5_KCas((SecondOStart))
+    q5_KCas -- "O" --> q6_KCas((SecondOEnd))
+    q6_KCas -- "ε" --> qF_Cas(((CastlingAccept)))
+
+    q0_Cas -- "ε" --> q1_QCas((FirstOStart))
+    q1_QCas -- "O" --> q2_QCas((FirstOEnd))
+    q2_QCas -- "ε" --> q3_QCas((FirstDashStart))
+    q3_QCas -- "-" --> q4_QCas((FirstDashEnd))
+    q4_QCas -- "ε" --> q5_QCas((SecondOStart))
+    q5_QCas -- "O" --> q6_QCas((SecondOEnd))
+    q6_QCas -- "ε" --> q7_QCas((SecondDashStart))
+    q7_QCas -- "-" --> q8_QCas((SecondDashEnd))
+    q8_QCas -- "ε" --> q9_QCas((ThirdOStart))
+    q9_QCas -- "O" --> q10_QCas((ThirdOEnd))
+    q10_QCas -- "ε" --> qF_Cas(((CastlingAccept)))
+
+
+    %% --- Promotion NFA ---
+    S -- ε --> q0_Pro((PromotionStart))
+    q0_Pro -- "ε" --> q1_Pro((PawnStart))
+    q1_Pro -- "[a-h]" --> q2_Pro((PawnEnd))
+    q2_Pro -- "ε" --> q3_Pro((RankStart))
+    q3_Pro -- "[18]" --> q4_Pro((RankEnd))
+    q4_Pro -- "ε" --> q5_Pro((EqualsStart))
+    q5_Pro -- "=" --> q6_Pro((EqualsEnd))
+    q6_Pro -- "ε" --> q7_Pro((PieceId))
+    q7_Pro -- "[QBNR]" --> q8_Pro((PieceIdEnd))
+    q8_Pro -- "ε" --> qF_Pro(((PromotionAccept)))
+
+
+    %% --- Promotion Via Capture NFA ---
+    S -- ε --> q0_ProC((PromotionViaCaptureStart))
+    q0_ProC -- "ε" --> q1_ProC((PawnStart))
+    q1_ProC -- "[a-h]" --> q2_ProC((PawnEnd))
+    q2_ProC -- "ε" --> q3_ProC((CaptureSymbolStart))
+    q3_ProC -- "x" --> q4_ProC((CaptureSymbolEnd))
+    q4_ProC -- "ε" --> q5_ProC((FileStart))
+    q5_ProC -- "[a-h]" --> q6_ProC((FileEnd))
+    q6_ProC -- "ε" --> q7_ProC((RankStart))
+    q7_ProC -- "[18]" --> q8_ProC((RankEnd))
+    q8_ProC -- "ε" --> q9_ProC((EqualsStart))
+    q9_ProC -- "=" --> q10_ProC((EqualsEnd))
+    q10_ProC -- "ε" --> q11_ProC((PieceId))
+    q11_ProC -- "[QBNR]" --> q12_ProC((PieceIdEnd))
+    q12_ProC -- "ε" --> qF_ProC(((PromotionViaCaptureAccept)))
+
+
+    %% --- Base Moves ---
+    q0_BM((BaseMoveStart))
+    qF_PM -- "ε" --> q0_BM
+    qF_PCM -- "ε" --> q0_BM
+    qF_TPM -- "ε" --> q0_BM
+    qF_PC -- "ε" --> q0_BM
+    qF_PCC -- "ε" --> q0_BM
+    qF_TPC -- "ε" --> q0_BM
+    qF_Cas -- "ε" --> q0_BM
+    qF_Pro -- "ε" --> q0_BM
+    qF_ProC -- "ε" --> q0_BM
+
+
+    %% --- Check ---
+    q0_BM -- "ε" --> q1_CH((CheckStart))
+    q1_CH -- "[+]" --> qF_CHECK(((CheckAccept)))
+
+
+    %% --- Checkmate ---
+    q0_BM -- "ε" --> q1_CM((CheckmateStart))
+    q1_CM -- "[#]" --> qF_CHECKMATE(((CheckmateAccept)))
+
+
+    %% --- Move Number ---
+    S -- "ε" --> q0_MoveNum((MoveNumStart))
+    q0_MoveNum -- "ε" --> q1_MoveNumOne((BaseNumStart))
+    q1_MoveNumOne -- "[0-9]" --> q2_MoveNumOne((BaseNumEnd))
+    q2_MoveNumOne -- "ε" --> q3_MoveNumOne((dotStart))
+    q3_MoveNumOne -- "[.]" --> q4_MoveNumOne(((dotEnd)))
+    q4_MoveNumOne -- "ε" --> qF_MoveNum((MoveNumAccept))
+    
+    q0_MoveNum -- "ε" --> q1_MoveNumTwo((BaseNumStart))
+    q1_MoveNumTwo -- "[0-9]" --> q2_MoveNumTwo((BaseNumEnd))
+    q2_MoveNumTwo -- "ε" --> q1_MoveNumTwo
+    q2_MoveNumTwo -- "ε" --> q3_MoveNumTwo((dotStart))
+    q3_MoveNumTwo -- "[.]" --> q4_MoveNumTwo((dotEnd))
+    q4_MoveNumTwo -- "ε" --> qF_MoveNum(((MoveNumAccept)))
+
+
+    %% --- Result ---
+    S -- "ε" --> q0_Result((ResultStart))
+    q0_Result -- "ε" --> q1_ResultW((OneStart))
+    q1_ResultW -- "[1]" --> q2_ResultW((OneEnd))
+    q2_ResultW -- "ε" --> q3_ResultW((DashStart))
+    q3_ResultW -- "[-]" --> q4_ResultW((DashEnd))
+    q4_ResultW -- "ε" --> q5_ResultW((ZeroStart))
+    q5_ResultW -- "[0]" --> q6_ResultW((ZeroEnd))
+    q6_ResultW -- "ε" --> qF_RESULT(((ResultAccept)))
+
+    q0_Result -- "ε" --> q1_ResultB((ZeroStart))
+    q1_ResultB -- "[0]" --> q2_ResultB((ZeroEnd))
+    q2_ResultB -- "ε" --> q3_ResultB((DashStart))
+    q3_ResultB -- "[-]" --> q4_ResultB((DashEnd))
+    q4_ResultB -- "ε" --> q5_ResultB((OneStart))
+    q5_ResultB -- "[1]" --> q6_ResultB((OneEnd))
+    q6_ResultB -- "ε" --> qF_RESULT(((ResultAccept)))
+
+    q0_Result -- "ε" --> q1_ResultD((OneStart))
+    q1_ResultD -- "[1]" --> q2_ResultD((OneEnd))
+    q2_ResultD -- "ε" --> q3_ResultD((SlashStart))
+    q3_ResultD -- "[/]" --> q4_ResultD((SlashEnd))
+    q4_ResultD -- "ε" --> q5_ResultD((TwoStart))
+    q5_ResultD -- "[2]" --> q6_ResultD((TwoEnd))
+    q6_ResultD -- "ε" --> q7_ResultD((DashStart))
+    q7_ResultD -- "[-]" --> q8_ResultD((DashEnd))
+    q8_ResultD -- "ε" --> q9_ResultD((OneStart))
+    q9_ResultD -- "[1]" --> q10_ResultD((OneEnd))
+    q10_ResultD -- "ε" --> q11_ResultD((SlashStart))
+    q11_ResultD -- "[/]" --> q12_ResultD((SlashEnd))
+    q12_ResultD -- "ε" --> q13_ResultD((TwoStart))
+    q13_ResultD -- "[2]" --> q14_ResultD((TwoEnd))
+    q14_ResultD -- "ε" --> qF_RESULT(((ResultAccept)))
+
+
+    %% --- Variation ---
+    S -- "ε" --> q0_VarS((VariationStart))
+    q0_VarS -- "ε" --> q1_VarS((OpenParenStart))
+    q1_VarS -- "' ( '" --> q2_VarS((OpenParenEnd))
+    q2_VarS -- "ε" --> qF_VarS(((VariationStartAccept)))
+
+    S -- "ε" --> q0_VarE((VariationEndStart))
+    q0_VarE -- "ε" --> q1_VarE((CloseParenStart))
+    q1_VarE -- "' ) '" --> q2_VarE((CloseParenEnd))
+    q2_VarE -- "ε" --> qF_VarE(((VariationEndAccept)))
+
+
+    %% --- Styles ---
+    style S fill:#f9f,stroke:#333,stroke-width:4px
+    style qF_PM fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_PCM fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_TPM fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_PC fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_PCC fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_TPC fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_Cas fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_Pro fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_ProC fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_CHECK fill:#fbb,stroke:#333,stroke-width:4px
+    style qF_CHECKMATE fill:#fbb,stroke:#333,stroke-width:4px
+    style qF_MoveNum fill:#bfb,stroke:#333,stroke-width:4px
+    style qF_RESULT fill:#bfb,stroke:#333,stroke-width:4px
+    style qF_VarS fill:#ffb,stroke:#333,stroke-width:4px
+    style qF_VarE fill:#ffb,stroke:#333,stroke-width:4px
