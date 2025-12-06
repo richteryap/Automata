@@ -1,0 +1,134 @@
+graph LR
+    %% --- Pawn Move DFA ---
+    q0_PM((PawnMove))
+    q0_PM -- "[a-h]" --> q1_PM((File))
+    q1_PM -- "[1-8]" --> qF_PM(((Rank)))
+
+
+    %% --- Piece Move DFA ---
+    q0_PCM((PieceMove))
+    q0_PCM -- "[KQBNR]" --> q1_PCM((PieceId))
+    q1_PCM -- "[a-h]" --> q2_PCM((File))
+    q2_PCM -- "[1-8]" --> qF_PCM(((Rank)))
+
+
+    %% --- Twin Piece Move DFA ---
+    q0_TPM((TwinPieceMove))
+    q0_TPM -- "[KQBNR]" --> q1_TPM((PieceId))
+    q1_TPM -- "[a-h][1-8]" --> q2_TPM((Ambiguity))
+    q2_TPM -- "[a-h]" --> q3_TPM((File))
+    q3_TPM -- "[1-8]" --> qF_TPM(((Rank)))
+
+
+    %% --- Pawn Capture DFA ---
+    q0_PC((PawnCapture))
+    q0_PC -- "[a-h]" --> q1_PC((Pawn))
+    q1_PC -- "x" --> q2_PC((Capture))
+    q2_PC -- "[a-h]" --> q3_PC((File))
+    q3_PC -- "[1-8]" --> qF_PC(((Rank)))
+
+
+    %% --- Piece Capture DFA ---
+    q0_PCC((PieceCapture))
+    q0_PCC -- "[KQBNR]" --> q1_PCC((PieceId))
+    q1_PCC -- "x" --> q2_PCC((Capture))
+    q2_PCC -- "[a-h]" --> q3_PCC((File))
+    q3_PCC -- "[1-8]" --> qF_PCC(((Rank)))
+
+
+    %% --- Twin Piece Capture DFA ---
+    q0_TPC((TwinPieceCapture))
+    q0_TPC -- "[KQBNR]" --> q1_TPC((PieceId))
+    q1_TPC -- "[a-h][1-8]" --> q2_TPC((Ambiguity))
+    q2_TPC -- "x" --> q3_TPC((Capture))
+    q3_TPC -- "[a-h]" --> q4_TPC((File))
+    q4_TPC -- "[1-8]" --> qF_TPC(((Rank)))
+
+
+    %% --- Castling DFA ---
+    q0_Cas((Castling))
+    q0_Cas -- "O" --> q1_Cas((FirstO))
+    q1_Cas -- "-" --> q2_Cas((FirstDash))
+    q2_Cas -- "O" --> qF_Cas(((SecondO)))
+    q2_Cas -- "-" --> q3_Cas((SecondDash))
+    q3_Cas -- "O" --> qF_Cas(((ThirdO)))
+
+
+    %% --- Promotion DFA ---
+    q0_Pro((Promotion))
+    q0_Pro -- "[a-h]" --> q1_Pro((File))
+    q1_Pro -- "[18]" --> q2_Pro((Rank))
+    q2_Pro -- "=" --> q3_Pro((Promotion))
+    q3_Pro -- "[QBNR]" --> qF_Pro(((PieceId)))
+
+
+    %% --- Promotion Via Capture DFA ---
+    q0_ProC((PromotionViaCapture))
+    q0_ProC -- "[a-h]" --> q1_ProC((Pawn))
+    q1_ProC -- "x" --> q2_ProC((Capture))
+    q2_ProC -- "[a-h]" --> q3_ProC((File))
+    q3_ProC -- "[18]" --> q4_ProC((Rank))
+    q4_ProC -- "=" --> q5_ProC((Promotion))
+    q5_ProC -- "[QBNR]" --> qF_ProC(((PieceId)))
+
+
+    %% --- Check & Checkmate ---
+    qF_CHECK_MATE(((CheckOrMate)))
+    qF_PM -- "[+][#]" --> qF_CHECK_MATE
+    qF_PCM -- "[+][#]" --> qF_CHECK_MATE
+    qF_TPM -- "[+][#]" --> qF_CHECK_MATE
+    qF_PC -- "[+][#]" --> qF_CHECK_MATE
+    qF_PCC -- "[+][#]" --> qF_CHECK_MATE
+    qF_TPC -- "[+][#]" --> qF_CHECK_MATE
+    qF_Cas -- "[+][#]" --> qF_CHECK_MATE
+    qF_Pro -- "[+][#]" --> qF_CHECK_MATE
+    qF_ProC -- "[+][#]" --> qF_CHECK_MATE
+
+
+    %% --- Move Number ---
+    q0_MoveNum((MoveNum))
+    q0_MoveNum -- "[0-9]" --> q1_MoveNum((Num))
+    q1_MoveNum -- "[0-9]" --> q1_MoveNum((Num))
+    q1_MoveNum -- "[.]" --> qF_MoveNum(((Dot)))
+
+
+    %% --- Result ---
+    q0_Result((Result))
+    q0_Result -- "[1]" --> q1_Result((One))
+    q1_Result -- "[-]" --> q2_Result((Dash))
+    q2_Result -- "[0]" --> qF_RESULT(((Zero)))
+
+    q0_Result -- "[0]" --> q3_Result((Zero))
+    q3_Result -- "[-]" --> q4_Result((Dash))
+    q4_Result -- "[1]" --> qF_RESULT(((One)))
+
+    q1_Result -- "[/]" --> q5_Result((FirstSlash))
+    q5_Result -- "[2]" --> q6_Result((FirstTwo))
+    q6_Result -- "[-]" --> q7_Result((Dash))
+    q7_Result -- "[1]" --> q8_Result((SecondOne))
+    q8_Result -- "[/]" --> q9_Result((SecondSlash))
+    q9_Result -- "[2]" --> qF_RESULT(((SecondTwo)))
+
+
+    %% --- Variation ---
+    q0_VarS((VariationStart))
+    q0_VarS -- "' ( '" --> qF_VarS(((OpenParen)))
+    q0_VarE((VariationEnd))
+    q0_VarE -- "' ) '" --> qF_VarE(((CloseParen)))
+
+
+    %% --- Styles ---
+    style qF_PM fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_PCM fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_TPM fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_PC fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_PCC fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_TPC fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_Cas fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_Pro fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_ProC fill:#bbf,stroke:#333,stroke-width:4px
+    style qF_CHECK_MATE fill:#fbb,stroke:#333,stroke-width:4px
+    style qF_MoveNum fill:#bfb,stroke:#333,stroke-width:4px
+    style qF_RESULT fill:#bfb,stroke:#333,stroke-width:4px
+    style qF_VarS fill:#ffb,stroke:#333,stroke-width:4px
+    style qF_VarE fill:#ffb,stroke:#333,stroke-width:4px
