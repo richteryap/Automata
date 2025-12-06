@@ -695,13 +695,9 @@ public:
                     cout << "SEQUENCE ERROR: Unclosed variation(s) — missing ')'.\n";
                     return false;
                 }
-                if (pdaStack.back().currentState == MoveState::EXPECT_WHITE_MOVE) {
-                    cout << "SEQUENCE ERROR: Game ended abruptly. Expected White's move for turn " << pdaStack.back().expectedMoveNumber << ".\n";
+                if (pdaStack.back().currentState == MoveState::EXPECT_NUMBER || pdaStack.back().currentState == MoveState::EXPECT_WHITE_MOVE || pdaStack.back().currentState == MoveState::EXPECT_BLACK_MOVE) {
+                    cout << "SEQUENCE ERROR: Incomplete game — missing result at end of input.\n";
                     return false;
-                }
-                if (pdaStack.back().currentState == MoveState::EXPECT_BLACK_MOVE) {
-                    cout << "SEQUENCE WARNING: Game ended after White's move in turn " << pdaStack.back().expectedMoveNumber 
-                         << ". Black's move is missing (Half-move).\n";
                 }
                 break; 
             }
