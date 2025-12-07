@@ -1,0 +1,37 @@
+graph TD
+    %% Main States
+    q0((Start))
+    q1((Exp Num))
+    q2((Exp White))
+    q3((Exp Black))
+    q4((Game Over))
+    qF(((Accept)))
+
+    %% Main Loop
+    q0 -- "ε, push z" --> q1
+    q1 -- "Move Number (n+1), push ε" --> q2
+    q2 -- "Move, push ε" --> q3
+    q3 -- "Move, push ε" --> q1
+
+    %% Game End
+    q1 -- "Result, push ε" --> q4
+    q3 -- "Result, push ε" --> q4
+
+    %% Accept State
+    q4 -- "ε, pop z" --> qF
+
+    %% Semantic Rules for Variations
+    qV{"saves game state/restores top game state\n(if from exp num, go to exp black)\n(if from exp black, go to exp white)\n(if top saved state is exp num, go to exp white and n+1)\n(if top saved state is exp black, go to exp black)"}
+
+    %% Variation Push/Pop Implementation
+    q1 -- "(, push v\n), pop v" --> qV
+    q3 -- "(, push v\n), pop v" --> qV
+    qV -- "move number (n)\nmove number (n+1)" --> q2
+    qV -- "move number (n)" --> q3
+
+    style q0 fill:#f9f,stroke:#333,stroke-width:4px
+    style q1 fill:#bbf,stroke:#333,stroke-width:4px
+    style q2 fill:#bbf,stroke:#333,stroke-width:4px
+    style q3 fill:#bbf,stroke:#333,stroke-width:4px
+    style qF fill:#ff9,stroke:#333,stroke-width:4px
+    style qV fill:#f96,stroke:#333,stroke-width:4px
