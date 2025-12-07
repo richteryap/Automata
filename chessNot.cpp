@@ -8,6 +8,7 @@
 #include <stdexcept> 
 #include <cctype>
 #include <algorithm>
+#include <fstream>
 
 using namespace std;
 
@@ -833,29 +834,72 @@ public:
         if (!syntaxValid) cout << "   - Syntactic errors (token structure and sequence) found.\n";
         cout << "=======================================\n" << "\n";
     }
+
+public:
+    void runTestsFromFile(const string& filename) {
+        ifstream file(filename);
+        if (!file.is_open()) {
+            cerr << "Could not open file \"sample.pgn\". Paste or create a pgn file and name it \"sample.pgn\" in the folder where the executable is located and try again.\n" << endl;
+            return;
+        }
+
+        cout << "\n=== BATCH PROCESSING: " << filename << " ===\n";
+        cout << "\n";
+        
+        string line;
+        int lineNum = 1;
+        while (getline(file, line)) {
+            if (line.empty()) continue;
+            cout << "\n--- FILE TEST CASE #" << lineNum++ << " ---\n";
+            processInput(line);
+
+            string input;
+            cout << "\nContinue? (y/n)\n";
+            getline(cin, input);
+            if (input == "n") {
+                cout << "Exiting batch processing.\n";
+                break;
+            }
+        }
+        file.close();
+    }
 };
 
 int main() {
     ChessParserSimulator simulator;
     string input;
 
-    do {
-        cout << "=== CHESS PGN ANALYZER SIMULATOR ===\n";
-        cout << "Enter chess notation (or 'quit' to exit):\n> ";
+    cout << "=== CHESS PGN ANALYZER SIMULATOR ===\n";
+    cout << "Enter chess notation from pgn file or directly to the terminal (file/terminal)?\nType 'f' to open file or\nType 't' to directly input pgn into the terminal or\nType any key to exit\n> ";
+    getline(cin, input);
+
+    if (input == "f" || input == "file") {
+        cout << "\nPaste or create a file named \"sample.pgn\" in the folder where the executable is located.\nAre you ready to process the file? (y/n): ";
         getline(cin, input);
-
-        if (input == "quit" || input == "exit" || input == "q") {
-            return 0;
+        if (input == "y" || input == "yes") {
+            simulator.runTestsFromFile("sample.pgn");
         }
+        cout << "Exiting.\n";
+    } else if (input == "t" || input == "terminal") {
+        do {
+            cout << "\nEnter chess notation (or 'quit' to exit):\n> ";
+            getline(cin, input);
 
-        try {
-            simulator.processInput(input);
-        } catch (const exception& e) {
-            cerr << "\n[RUNTIME EXCEPTION] An unexpected error occurred: " << e.what() << endl;
-        } catch (...) {
-            cerr << "\n[RUNTIME EXCEPTION] An unknown error occurred during processing." << endl;
-        }
-    } while (true);
-    
-    return 0;
+            if (input == "quit" || input == "exit" || input == "q") {
+                return 0;
+            }
+
+            try {
+                simulator.processInput(input);
+            } catch (const exception& e) {
+                cerr << "\n[RUNTIME EXCEPTION] An unexpected error occurred: " << e.what() << endl;
+            } catch (...) {
+                cerr << "\n[RUNTIME EXCEPTION] An unknown error occurred during processing." << endl;
+            }
+        } while (true);
+        return 0;
+    } else {
+        cout << "Exiting.\n";
+        return 0;
+    }
 }
