@@ -693,7 +693,7 @@ public:
 
             if (token.type == ChessTokenType::END_OF_INPUT) { 
                 if (pdaStack.size() > 1) {
-                    cout << "SEQUENCE ERROR: Unclosed variation(s) — missing ')'.\n";
+                    cout << "SEQUENCE ERROR: Unclosed variation(s) — missing ')' at pos " << token.position << ".\n";
                     return false;
                 }
                 if (pdaStack.back().currentState == MoveState::EXPECT_NUMBER || pdaStack.back().currentState == MoveState::EXPECT_WHITE_MOVE || pdaStack.back().currentState == MoveState::EXPECT_BLACK_MOVE) {
@@ -707,11 +707,16 @@ public:
                 if (token.type == ChessTokenType::END_OF_INPUT) {
                     break; 
                 }
-                cout << "SEQUENCE ERROR: Tokens found after game termination (" << token.value << ").\n";
+                cout << "SEQUENCE ERROR: Tokens found after game termination at pos " << token.position << ".\n";
                 return false;
             }
             
             if (token.type == ChessTokenType::RESULT) {
+                if (i > 0 && tokens[i-1].type == ChessTokenType::MOVE_NUMBER) {
+                    cout << "SEQUENCE ERROR: Found RESULT (" << token.value 
+                         << ") immediately after MOVE_NUMBER without moves at pos " << token.position << ".\n";
+                    return false;
+                }
                 pdaStack.back().currentState = MoveState::GAME_OVER; 
                 continue;
             }
@@ -724,7 +729,7 @@ public:
                     continue;
                 }
                 if (pdaStack.back().currentState != MoveState::EXPECT_NUMBER) {
-                    cout << "SEQUENCE ERROR: Found MOVE_NUMBER (" << token.value << ") but expected a move or result.\n";
+                    cout << "SEQUENCE ERROR: Found MOVE_NUMBER (" << token.value << ") but expected a move or result at pos " << token.position << ".\n";
                     return false;
                 }
 
@@ -738,7 +743,7 @@ public:
 
                 if (moveNumber != pdaStack.back().expectedMoveNumber) {
                     cout << "SEQUENCE ERROR: Expected move number " << pdaStack.back().expectedMoveNumber 
-                         << " but found " << moveNumber << ".\n";
+                         << " but found " << moveNumber << "at pos " << token.position << ".\n";
                     return false;
                 }
 
@@ -758,7 +763,7 @@ public:
                     } else if (i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::RESULT || i + 1 < tokens.size() && tokens[i+1].type == ChessTokenType::VAR_BEGIN) {
                     } else {
                         cout << "SEQUENCE ERROR: Checkmate (" << token.value 
-                             << ") must be followed immediately by a game RESULT (e.g., 1-0 or 0-1).\n";
+                             << ") must be followed immediately by a game RESULT (e.g., 1-0 or 0-1) at end of input.\n";
                         return false;
                     }
                 }
@@ -771,7 +776,7 @@ public:
                     pdaStack.back().currentState = MoveState::EXPECT_NUMBER;
                 } else {
                     cout << "SEQUENCE ERROR: Found an unexpected move (" << token.value 
-                         << ") when expecting move number or result.\n";
+                         << ") when expecting move number or result at pos " << token.position << ".\n";
                     return false;
                 }
                 continue;
@@ -854,7 +859,7 @@ public:
             processInput(line);
 
             string input;
-            cout << "\nContinue? (y/n)\n";
+            cout << "Continue? (y/n): ";
             getline(cin, input);
             if (input == "n") {
                 cout << "Exiting batch processing.\n";
@@ -870,11 +875,11 @@ int main() {
     string input;
 
     cout << "=== CHESS PGN ANALYZER SIMULATOR ===\n";
-    cout << "Enter chess notation from pgn file or directly to the terminal (file/terminal)?\nType 'f' to open file or\nType 't' to directly input pgn into the terminal or\nType any key to exit\n> ";
+    cout << "Enter chess notation from pgn file or directly to the terminal (file/terminal)?\nType 'f' to open file or\nType 't' to input directly into the terminal or\nType any key to exit\n> ";
     getline(cin, input);
 
     if (input == "f" || input == "file") {
-        cout << "\nPaste or create a file named \"sample.pgn\" in the folder where the executable is located.\nAre you ready to process the file? (y/n): ";
+        cout << "\nPaste or create a file and name it \"sample.pgn\" in the folder where the executable is located.\nAre you ready to process the file? (y/n): ";
         getline(cin, input);
         if (input == "y" || input == "yes") {
             simulator.runTestsFromFile("sample.pgn");
