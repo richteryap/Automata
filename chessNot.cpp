@@ -290,7 +290,7 @@ public:
 
         NFAPtr draw = concatenate(half1, concatenate(slash1, concatenate(two1,
                             concatenate(dash3, concatenate(half2, concatenate(slash2, two2))))));
-        return unionNFA(simpleResults, draw);
+        return unionNFA(simpleResults, draw); //1-0 (white wins), 0-1 (black wins), 1/2-1/2 (draw)
     }
 
     NFAPtr createVarBeginNFA() {
@@ -859,9 +859,9 @@ public:
             processInput(line);
 
             string input;
-            cout << "Continue? (y/n): ";
+            cout << "Enter any key to continue (or 'quit' to exit): ";
             getline(cin, input);
-            if (input == "n") {
+            if (input == "quit" || input == "exit" || input == "q") {
                 cout << "Exiting batch processing.\n";
                 break;
             }
@@ -875,11 +875,11 @@ int main() {
     string input;
 
     cout << "=== CHESS PGN ANALYZER SIMULATOR ===\n";
-    cout << "Enter chess notation from pgn file or directly to the terminal (file/terminal)?\nType 'f' to open file or\nType 't' to input directly into the terminal or\nType any key to exit\n> ";
+    cout << "Enter chess notation from pgn file or directly to the terminal (file/terminal)?\nEnter 'f' to open file or\nEnter 't' to input directly into the terminal or\nEnter any key to exit\n> ";
     getline(cin, input);
 
     if (input == "f" || input == "file") {
-        cout << "\nPaste or create a file and name it \"sample.pgn\" in the folder where the executable is located.\nAre you ready to process the file? (y/n): ";
+        cout << "\nCreate a file and name it \"sample.pgn\". Place the file in the folder where the executable is located and run the program again.\nAre you ready to process the file? (Enter 'y' to proceed or any key to exit): ";
         getline(cin, input);
         if (input == "y" || input == "yes") {
             simulator.runTestsFromFile("sample.pgn");
