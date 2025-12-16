@@ -368,7 +368,7 @@ public:
                     currentDFA->transitions[c] = dfaStateMap[nextClosure];
                 }
             }
-        }
+        }  
         return startDFA;
     }
 

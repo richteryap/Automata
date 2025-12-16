@@ -20,18 +20,17 @@ graph TD
     %% Accept State
     q4 -- "ε, pop z" --> qF
 
-    %% Semantic Rules for Variations
-    qV{"saves game state/restores top game state\n(if from exp num, go to exp black)\n(if from exp black, go to exp white)\n(if top saved state is exp num, go to exp white and n+1)\n(if top saved state is exp black, go to exp black)"}
-
     %% Variation Push/Pop Implementation
-    q1 -- "(, push v\n), pop v" --> qV
-    q3 -- "(, push v\n), pop v" --> qV
-    qV -- "move number (n)\nmove number (n+1)" --> q2
-    qV -- "move number (n)" --> q3
+    q3 -- "(, push v1" --> q2
+    q3 -- "), pop v1" --> q3
+    q1 -- "), pop v1" --> q3
+
+    q1 -- "(, push v2" --> q3
+    q1 -- "), pop v2" --> q1
+    q3 -- "), pop v2" --> q1
 
     style q0 fill:#f9f,stroke:#333,stroke-width:4px
     style q1 fill:#bbf,stroke:#333,stroke-width:4px
     style q2 fill:#bbf,stroke:#333,stroke-width:4px
     style q3 fill:#bbf,stroke:#333,stroke-width:4px
     style qF fill:#ff9,stroke:#333,stroke-width:4px
-    style qV fill:#f96,stroke:#333,stroke-width:4px
